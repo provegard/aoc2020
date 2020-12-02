@@ -1,16 +1,16 @@
-﻿open System
-open System.Linq
+﻿open System.Linq
 open fsutils.FsUtils
 
 type Entry = { min: int; max: int; letter: char; password: string }
 
 let parseLine (line:string) : Entry =
     let parts = line.Split('-', ':', ' ').Where(fun p -> p <> "").ToArray()
-    let min = Int32.Parse parts.[0]
-    let max = Int32.Parse parts.[1]
-    let letter = parts.[2].[0]
-    let password = parts.[3]
-    { min = min; max = max; letter = letter; password = password }
+    {
+        min = parts.[0] |> int
+        max = parts.[1] |> int
+        letter = parts.[2].[0]
+        password = parts.[3]
+    }
     
 let passwordMatchesPart1 (e: Entry) =
     let actual = e.password.Count(fun ch -> ch = e.letter)
