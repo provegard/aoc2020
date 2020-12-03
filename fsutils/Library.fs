@@ -7,7 +7,7 @@ module FsUtils =
     let readLines (filePath:string) = seq {
         use sr = new StreamReader (filePath)
         while not sr.EndOfStream do
-            yield sr.ReadLine ()
+            yield sr.ReadLine().Trim()
     }
 
     // No xor in F#??
