@@ -43,8 +43,27 @@ let part1 =
     while not (doneCheck s) do
         s <- (slideStep m s 3 1)
     printfn "%d" s.treesEncountered
+    
+let part2 =
+    let m = readMap "input"
+    let doneCheck = isSlideDone m
+    
+    let angles: List<int*int> = [ (1, 1) ; (3, 1) ; (5, 1) ; (7, 1) ; (1, 2) ]
+    
+    let doSlide (acc: int) (xy: int*int) =
+        let (x, y) = xy
+        let mutable s = newSlide
+        while not (doneCheck s) do
+            s <- (slideStep m s x y)
+        
+        acc * s.treesEncountered
+
+    let result: int = List.fold doSlide 1 angles
+    
+    printfn "%d" result
 
 [<EntryPoint>]
 let main argv =
     part1
+    part2
     0 // return an integer exit code
