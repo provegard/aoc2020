@@ -11,23 +11,24 @@ type Passport = { data: Map<string, string> }
 
 let join (p:Map<'a,'b>) (q:Map<'a,'b>) = 
     Map(Seq.concat [ (Map.toSeq p) ; (Map.toSeq q) ])
+    
+let arrayToTuple (arr: 'a[]) : 'a*'a = (arr.[0], arr.[1])
 
 let toPassport (lines: seq<string>) : Passport =
     let build (d: Map<string, string>) (l: string) =
-        let tups: seq<string*string> = l.Split(' ').Select(fun part ->
-            let pp = part.Split(':')
-            (pp.[0], pp.[1])
-            )
-        let tupMap = Map.ofSeq tups
-        join d tupMap
+        let tups: seq<string*string> = l.Split(' ').Select(fun part -> arrayToTuple (part.Split(':')))
+        join d (Map.ofSeq tups)
     let passportData : Map<string, string> = Seq.fold build Map.empty lines
     { data = passportData }
 
+let splitLines (lines: seq<string>) : seq<string>*seq<string> =
+    let passportLines = lines |> Seq.takeWhile(fun l -> l <> "")
+    let rest = lines |> Seq.skipWhile(fun l -> l <> "") |> Seq.skipWhile(fun l -> l = "")
+    (passportLines, rest)
+
 let rec readPassports (lines: seq<string>) : seq<Passport> = seq {
-    if lines.Any() then        
-        // No 'span' function in F# ?
-        let passportLines = lines |> Seq.takeWhile(fun l -> l <> "")
-        let rest = lines |> Seq.skipWhile(fun l -> l <> "") |> Seq.skipWhile(fun l -> l = "")
+    if lines.Any() then
+        let (passportLines, rest) = splitLines lines
         yield (toPassport passportLines)
         yield! (readPassports rest)
 }
@@ -44,8 +45,7 @@ let validInt (s: string) (dflt: int) =
     let success, value = Int32.TryParse s
     if success then value else dflt
     
-let inRange (v: int) (min: int) (max: int) : bool =
-    min <= v && v <= max
+let inRange (v: int) (min: int) (max: int) : bool = min <= v && v <= max
     
 let hclRegex = Regex("^#[0-9a-f]{6}$")
 let pidRegex = Regex("^[0-9]{9}$")
@@ -68,29 +68,29 @@ let isFieldValid (tup: string*string) =
         else
             false
     | "hcl" -> hclRegex.IsMatch(fieldValue)
-    | "ecl" -> eyeColors.Contains(fieldValue)
+    | "ecl" -> eyeColors |> List.contains fieldValue
     | "pid" -> pidRegex.IsMatch(fieldValue)
     | _ -> true
     
 let hasValidFields (p: Passport) : bool =
-    (Map.toSeq p.data).All(fun t -> isFieldValid t)
+    p.data
+        |> Map.toSeq
+        |> Seq.forall isFieldValid
 
 let isValid2 (p: Passport) : bool = (isValid1 p) && (hasValidFields p)
 
-let part1 () =
-    let lines = readLines "input"
-    let passports = readPassports lines
+let part1 (passports: seq<Passport>) =
     let validCount = passports.Count(fun p -> isValid1 p)
     printf "%d\n" validCount
     
-let part2 () =
-    let lines = readLines "input"
-    let passports = readPassports lines
+let part2 (passports: seq<Passport>) =
     let validCount = passports.Count(fun p -> isValid2 p)
     printf "%d\n" validCount
 
 [<EntryPoint>]
 let main argv =
-    part1()
-    part2()
+    let lines = readLines "input"
+    let passports = readPassports lines
+    part1 passports
+    part2 passports
     0 // return an integer exit code
