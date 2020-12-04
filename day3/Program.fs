@@ -36,26 +36,25 @@ let readMap (filePath:string) : Map =
         { width = line.Length; height = m.height + 1; trees = newTrees }
     ) emptyMap lines
     
-let part1 () =
-    let m = readMap "input"
-    let mutable s = newSlide
+let unfoldGen (x: 'a) : ('a*'a) option = Some(x, x)
+
+let completeSlide (m: Map) (x: int) (y: int) : Slide =
     let doneCheck = isSlideDone m
-    while not (doneCheck s) do
-        s <- (slideStep m s 3 1)
-    printfn "%d" s.treesEncountered
+    newSlide
+        |> Seq.unfold (fun s -> unfoldGen (slideStep m s x y))
+        |> Seq.takeWhile (fun x -> not (doneCheck x))
+        |> Seq.last
+
+let part1 (m: Map) =
+    let final = completeSlide m 3 1
+    printfn "%d" final.treesEncountered
     
-let part2 () =
-    let m = readMap "input"
-    let doneCheck = isSlideDone m
-    
+let part2 (m: Map) =
     let angles: List<int*int> = [ (1, 1) ; (3, 1) ; (5, 1) ; (7, 1) ; (1, 2) ]
     
     let doSlide (acc: int) (xy: int*int) =
         let (x, y) = xy
-        let mutable s = newSlide
-        while not (doneCheck s) do
-            s <- (slideStep m s x y)
-        
+        let s = completeSlide m x y
         acc * s.treesEncountered
 
     let result: int = List.fold doSlide 1 angles
@@ -64,6 +63,7 @@ let part2 () =
 
 [<EntryPoint>]
 let main argv =
-    part1()
-    part2()
+    let m = readMap "input"
+    part1 m
+    part2 m
     0 // return an integer exit code
