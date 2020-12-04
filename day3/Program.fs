@@ -36,7 +36,7 @@ let readMap (filePath:string) : Map =
         { width = line.Length; height = m.height + 1; trees = newTrees }
     ) emptyMap lines
     
-let part1 =
+let part1 () =
     let m = readMap "input"
     let mutable s = newSlide
     let doneCheck = isSlideDone m
@@ -44,7 +44,7 @@ let part1 =
         s <- (slideStep m s 3 1)
     printfn "%d" s.treesEncountered
     
-let part2 =
+let part2 () =
     let m = readMap "input"
     let doneCheck = isSlideDone m
     
@@ -64,6 +64,6 @@ let part2 =
 
 [<EntryPoint>]
 let main argv =
-    part1
-    part2
+    part1()
+    part2()
     0 // return an integer exit code
