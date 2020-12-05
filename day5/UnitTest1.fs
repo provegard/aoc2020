@@ -2,6 +2,7 @@ module day5
 
 open NUnit.Framework
 open fsutils.FsUtils
+open System.Linq
 
 let binPart (min: int) (max: int) (ch: char) : int*int =
     let half = min + (max - min + 1) / 2
@@ -19,15 +20,31 @@ let decode (s: string) : int*int =
 let seatId (s: string) : int =
     let (row, col) = decode s
     row * 8 + col
+    
+let readInput = readLines "../../../input"
+
+let seatIds lines = lines |> Seq.map seatId
+
+
+[<Test>]
+let part2 () =
+    let lines = readInput
+    let actualIds = seatIds lines
+
+    let minId = actualIds |> Seq.min
+    let maxId = actualIds |> Seq.max
+
+    let allIds = [ for id in minId .. maxId -> id ]
+    
+    let missing = allIds.Except(actualIds).ToList()
+    
+    Assert.That(missing, Is.EqualTo([ 661 ]))
 
 [<Test>]
 let part1 () =
-    let lines = readLines "../../../input"
-    let max =
-        lines
-        |> Seq.map seatId
-        |> Seq.max
-    Assert.That(max, Is.EqualTo(0))
+    let lines = readInput
+    let maxSeatId = seatIds lines |> Seq.max
+    Assert.That(maxSeatId, Is.EqualTo(901))
     
 [<Test>]
 let setIdTestTest () =
