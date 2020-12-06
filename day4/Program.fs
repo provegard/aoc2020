@@ -21,17 +21,8 @@ let toPassport (lines: seq<string>) : Passport =
     let passportData : Map<string, string> = Seq.fold build Map.empty lines
     { data = passportData }
 
-let splitLines (lines: seq<string>) : seq<string>*seq<string> =
-    let passportLines = lines |> Seq.takeWhile(fun l -> l <> "")
-    let rest = lines |> Seq.skipWhile(fun l -> l <> "") |> Seq.skipWhile(fun l -> l = "")
-    (passportLines, rest)
-
-let rec readPassports (lines: seq<string>) : seq<Passport> = seq {
-    if lines.Any() then
-        let (passportLines, rest) = splitLines lines
-        yield (toPassport passportLines)
-        yield! (readPassports rest)
-}
+let rec readPassports (lines: seq<string>) : seq<Passport> =
+    readBatches lines |> Seq.map toPassport
 
 let eqList (l1: list<string>) (l2: list<string>) =
     0 = List.compareWith (fun (x: string) (y: string) -> x.CompareTo(y)) l1 l2
