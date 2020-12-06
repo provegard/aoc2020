@@ -5,25 +5,19 @@ open fsutils.FsUtils
 
 let readInput = readLines "../../../input"
 
-let doCombine (comb: Set<char> -> Set<char> -> Set<char>) (persons: seq<string>) : Set<char> =
+let combine (comb: Set<char> -> Set<char> -> Set<char>) (persons: seq<string>) : Set<char> =
     persons
         |> Seq.map (fun str -> str.ToCharArray() |> Set.ofArray)
-        |> Seq.reduce (fun s1 s2 -> comb s1 s2)
+        |> Seq.reduce comb
 
-let combine (comb: Set<char> -> Set<char> -> Set<char>) (lines: seq<string>) : seq<Set<char>> =
-    readBatches lines |> Seq.map (doCombine comb)
-
-let part1 (lines: seq<string>) =
+let part (lines: seq<string>) (comb: Set<char> -> Set<char> -> Set<char>) =
     lines
-        |> combine Set.union
-        |> Seq.map (fun s -> s.Count)
-        |> Seq.fold (+) 0
+        |> readBatches
+        |> Seq.map (combine comb)
+        |> Seq.sumBy (fun s -> s.Count)
 
-let part2 (lines: seq<string>) =
-    lines
-        |> combine Set.intersect
-        |> Seq.map (fun s -> s.Count)
-        |> Seq.fold (+) 0
+let part1 (lines: seq<string>) = part lines Set.union
+let part2 (lines: seq<string>) = part lines Set.intersect
         
 [<Test>]
 let part1Test () =
