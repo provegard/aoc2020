@@ -7,6 +7,16 @@ open fsutils.FsUtils
 
 let readInput = readLines "../../../input"
 
+let testInput = @"light red bags contain 1 bright white bag, 2 muted yellow bags.
+dark orange bags contain 3 bright white bags, 4 muted yellow bags.
+bright white bags contain 1 shiny gold bag.
+muted yellow bags contain 2 shiny gold bags, 9 faded blue bags.
+shiny gold bags contain 1 dark olive bag, 2 vibrant plum bags.
+dark olive bags contain 3 faded blue bags, 4 dotted black bags.
+vibrant plum bags contain 5 faded blue bags, 6 dotted black bags.
+faded blue bags contain no other bags.
+dotted black bags contain no other bags.".Split('\n') |> Seq.ofArray
+
 type BagColor = string
 type BagCount = { color: BagColor; count: int }
 type Rule = { container: BagCount; contents: seq<BagCount> }
@@ -52,8 +62,55 @@ let part1 (lines: seq<string>) (myBag: BagColor) =
     let cont = containers rules myBag |> Set.toSeq |> Seq.distinct
     Seq.length cont
     
+type Memory = Map<BagColor, int>
+let count (rules: seq<Rule>) (myBag: BagColor) : int =
+    let rec countInner (bc: BagColor) (mem: Memory) : int*Memory =
+//        printf "bc = %s\n" bc
+        match mem.TryFind bc with
+        | Some(value) -> (value, mem)
+        | None ->
+            // Find the rule for this color
+            let rule = rules |> Seq.find (fun r -> r.container.color = bc)
+            
+            let immediateContentsCount = Seq.sumBy (fun bc -> bc.count) rule.contents
+            
+            let (cnt, newMem) =
+                rule.contents
+                |> Seq.fold (fun (acc: int*Memory) x ->
+                        let (prevCount, prevMem) = acc
+                        let (cnt', mem') = countInner x.color prevMem
+                        let cnt'' = cnt' * x.count
+                        (prevCount + cnt'', Map.add x.color cnt'' mem')
+                    ) (0, mem)
+            let cnt' = cnt + immediateContentsCount
+                
+//            printf "container = %s, count = %d\n" rule.container.color cnt'
+//            printf "-- rule = %A\n" rule
+                
+            (cnt', newMem)
+    let (count, finalMem) = countInner myBag Map.empty
+    printf "%A\n" finalMem
+    count
+    
+let part2 (lines: seq<string>) (myBag: BagColor) =
+    let rules = lines |> Seq.map parse
+    count rules myBag
+    
 [<Test>]
-let part1Test () =
-    let lines = readInput
-    let result = part1 lines "shiny gold"
-    Assert.That(result, Is.EqualTo(4))
+let test2 () =
+    let lines = testInput
+    let result = part2 lines "shiny gold"
+    Assert.That(result, Is.EqualTo(32))
+    
+//[<Test>]
+//let part1Test () =
+//    let lines = readInput
+//    let result = part1 lines "shiny gold"
+//    Assert.That(result, Is.EqualTo(4))
+
+//[<Test>]
+//let part2Test () =
+//    let lines = readInput
+//    let result = part2 lines "shiny gold"
+//    // 85831 is too high
+//    Assert.That(result, Is.EqualTo(0))
