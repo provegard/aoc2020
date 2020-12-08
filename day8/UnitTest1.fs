@@ -10,26 +10,18 @@ type State = { accumulator: int; ip: int; visited: Set<int> }
 
 let readInput = readLines "../../../input"
 
-let testInput = @"nop +0
-acc +1
-jmp +4
-acc +3
-jmp -3
-acc -99
-acc +1
-jmp -4
-acc +6"
-let testLines = testInput.Split('\n') |> Seq.ofArray
-
 let step (p: Program) (s: State) : State =
     let ip = s.ip
     let visited = s.visited
     let accumulator = s.accumulator
     
     if Set.contains ip visited then
-        raise (Exception (sprintf "already visited: %d - with accumulator %d" ip accumulator))
+        raise (InvalidOperationException (sprintf "already visited: %d - with accumulator %d" ip accumulator))
     
     let visited' = Set.add ip visited
+    
+    if ip >= (List.length p.instructions) then
+        raise (Exception (sprintf "End of program - with accumulator %d" accumulator))        
     
     let ins = p.instructions.Item ip
     let (ip', accumulator') =
@@ -40,6 +32,19 @@ let step (p: Program) (s: State) : State =
         | _ -> raise (Exception (sprintf "unknown instruction: %s" ins.opcode))
     let s' = { accumulator = accumulator'; ip = ip'; visited = visited' }
     s'
+    
+let changeIns (p: Program) (at: int) : Program =
+    let ins = p.instructions.Item at
+    let newIns =
+        match ins.opcode with
+        | "nop" -> { ins with opcode = "jmp" }
+        | "jmp" -> { ins with opcode = "nop" }
+        | _ -> ins
+    let before = List.take at p.instructions
+    let middle = List.singleton newIns
+    let after = List.skip (at + 1) p.instructions
+    let instructions' = List.concat [ before; middle; after ]
+    { p with instructions = instructions' }
 
 let newState : State = { accumulator = 0; ip = 0; visited = Set.empty }
 
@@ -58,9 +63,28 @@ let runProgram (p: Program) : Unit =
     let mutable s = newState
     while true do
         s <- step p s
+        
+let bruteForce (p: Program): Unit =
+    let changeIndexes =
+        p.instructions
+        |> List.indexed
+        |> List.where (fun (idx, ins) -> ins.opcode = "nop" || ins.opcode = "jmp")
+        |> List.map fst
+    for idx in changeIndexes do
+        let newP = changeIns p idx
+        try
+            runProgram newP
+        with
+        | :? InvalidOperationException -> ()
 
 [<Test>]
 let part1 () =
     let p = parseProgram readInput
     runProgram p // acc = 1709
     Assert.Pass()
+    
+[<Test>]
+let part2 () =
+    let p = parseProgram readInput
+    bruteForce p // acc = 1976
+    Assert.Fail "x"
