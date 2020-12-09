@@ -19,20 +19,18 @@ let rec findError (numbers: list<uint64>) (preambleLength: int) : uint64 option 
     | _ :: [] -> None
     | _ -> findError (List.skip 1 numbers) preambleLength
 
+let rangeInclusive (from: int) (to': int) (l: list<'a>) : list<'a> =
+    l |> List.skip from |> List.take (to' - from + 1)
+
 let part2 (numbers: list<uint64>) (soughtSum: uint64) : uint64 =
     
     let rec find (t: int*int) : uint64 =
         let (start, end') = t
-        let length = end' - start + 1
-        let subList = numbers |> List.skip start |> List.take length
-        let sum = subList |> List.sum
-        if sum = soughtSum then
-            // done
-            (List.min subList) + (List.max subList)
-        else if sum > soughtSum then
-            find (start + 1, end')
-        else
-            find (start, end' + 1)
+        let subList = numbers |> rangeInclusive start end'
+        match subList |> List.sum with
+        | n when n = soughtSum -> (List.min subList) + (List.max subList) // done
+        | n when n > soughtSum -> find (start + 1, end')                  // reduce window, remove start element
+        | _                    -> find (start, end' + 1)                  // extend window, include one more element
     
     find (0, 1)
 
