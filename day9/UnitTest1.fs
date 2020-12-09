@@ -11,8 +11,7 @@ let possibleSums (numbers: list<uint64>) : list<uint64> =
     |> List.map (fun (a, b) -> a + b)
     
 let rec findError (numbers: list<uint64>) (preambleLength: int) : uint64 option =
-    let preamble = List.take preambleLength numbers
-    let rest = List.skip preambleLength numbers
+    let (preamble, rest) = List.splitAt preambleLength numbers
     let sums = possibleSums preamble
     match rest with
     | n :: _ when not (List.contains n sums) -> Some(n)
