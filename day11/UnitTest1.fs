@@ -5,29 +5,35 @@ open fsutils.FsUtils
 
 let readInput () = readLines "../../../input" |> List.ofSeq
 
-let testInput = @"L.LL.LL.LL
-LLLLLLL.LL
-L.L.L..L..
-LLLL.LL.LL
-L.LL.LL.LL
-L.LLLLL.LL
-..L.L.....
-LLLLLLLLLL
-L.LLLLLL.L
-L.LLLLL.LL"
-let testLines = testInput.Split('\n') |> List.ofArray
-
-
 type Seat = { occupied: bool }
 type SeatingArea = { seats: Map<int*int, Seat>; width: int; height: int }
 
-let adjacent (x: int) (y: int) (sa: SeatingArea) : list<int*int> =
+type SeatFindStrategy = int -> int -> SeatingArea -> list<Seat>
+
+let isValidPos (x: int) (y: int) (sa: SeatingArea) : bool =
+    x >= 0 && y >= 0 && x < sa.width && y < sa.height
+
+let directions () =
     let offsets = [ -1; 0; 1 ]
     List.allPairs offsets offsets
-//    |> List.where (fun (a, b) -> a <> 0 && b <> 0)
+    |> List.where (fun (a, b) -> not (a = 0 && b = 0))
+
+let adjacent (x: int) (y: int) (sa: SeatingArea) : list<Seat> =
+    directions()
     |> List.map (fun (a, b) -> (a + x, b + y))
-    |> List.where (fun p -> p <> (x, y))
-    |> List.where (fun (a, b) -> a >= 0 && b >= 0 && a < sa.width && b < sa.height)
+    |> List.choose (fun (a, b) -> sa.seats.TryFind (a, b))
+    
+let visible (x: int) (y: int) (sa: SeatingArea) : list<Seat> =
+    
+    let rec findSeat (x': int) (y': int) (dx: int) (dy: int) : Seat option =
+        if isValidPos x' y' sa then
+            match sa.seats.TryFind (x', y') with
+            | Some(seat) -> Some(seat)
+            | None -> findSeat (x' + dx) (y' + dy) dx dy
+        else
+            None
+    
+    directions() |> List.choose (fun (dx, dy) -> findSeat (x + dx) (y + dy) dx dy)
 
 let emptySeatingArea (w: int) (h: int) : SeatingArea = { seats = Map.empty; width = w; height = h }
 let withEmptySeatAt (x: int) (y: int) (sa: SeatingArea) =
@@ -65,33 +71,22 @@ let print (sa: SeatingArea) : Unit =
             printf "%c" ch
         printf "\n"
     printf "\n"
-
-let round (sa: SeatingArea) : SeatingArea =
     
-//    print sa
+let round (sa: SeatingArea) (minOccupiedCount: int) (strategy: SeatFindStrategy) : SeatingArea =
     
     let mapper ((x, y): int*int) (seat: Seat) : Seat =
-        let adj = adjacent x y sa
-        let isOccupied = seat.occupied
-        let adjOccupiedCount = List.sumBy (fun (ax, ay) -> if (isSeatOccupied ax ay sa) then 1 else 0) adj
-        
-//        if x = 0 && y = 0 then
-//            printf "adj = %A\n" adj
-//            printf "x=%d y=%d isOccupied=%b adjOccupiedCount=%d\n" x y isOccupied adjOccupiedCount
+        let seats = strategy x y sa
+        let otherOccupiedCount = List.sumBy (fun s -> if s.occupied then 1 else 0) seats
         
         let newOccupied =
-            match (isOccupied, adjOccupiedCount) with
+            match (seat.occupied, otherOccupiedCount) with
             | (false, 0) -> true
-            | (true, n) when n >= 4 -> false
+            | (true, n) when n >= minOccupiedCount -> false
             | (x, _) -> x
         { occupied = newOccupied }
     
     let seats' = Map.map mapper sa.seats
-    let ret = { sa with seats = seats' }
-    
-    // print ret
-    
-    ret
+    { sa with seats = seats' }
     
 let isDone (prev: SeatingArea option) (current: SeatingArea) : bool =
     Option.exists (fun p -> p.seats = current.seats) prev
@@ -99,11 +94,11 @@ let isDone (prev: SeatingArea option) (current: SeatingArea) : bool =
 let countOccupied (sa: SeatingArea) : int =
     List.sumBy (fun (_, seat) -> if seat.occupied then 1 else 0) (sa.seats |> Map.toList)
     
-let part1 (seatingArea: SeatingArea) : int =
+let rounds (seatingArea: SeatingArea) (minOccupiedCount: int) (strategy: SeatFindStrategy) : int =
     let mutable prev: SeatingArea option = None
     let mutable sa = seatingArea
     while not (isDone prev sa) do
-        let sa' = round sa
+        let sa' = round sa minOccupiedCount strategy
         prev <- Some(sa)
         sa <- sa'
     countOccupied sa
@@ -111,5 +106,11 @@ let part1 (seatingArea: SeatingArea) : int =
 [<Test>]
 let Test1 () =
     let sa = toSeatingArea (readInput ())
-    let result = part1 sa
+    let result = rounds sa 4 adjacent
     Assert.That(result, Is.EqualTo(2204))
+    
+[<Test>]
+let Test2 () =
+    let sa = toSeatingArea (readInput ())
+    let result = rounds sa 5 visible
+    Assert.That(result, Is.EqualTo(1986))
