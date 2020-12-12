@@ -1,6 +1,7 @@
 ﻿namespace fsutils
 
 open System.IO
+open System
 
 module FsUtils =
 
@@ -24,3 +25,6 @@ module FsUtils =
             yield firstBatch
             yield! (readBatches rest)
     }
+    
+    let manhattan ((x1, y1): int*int) ((x2, y2): int*int) : int =
+        Math.Abs(x1 - x2) + Math.Abs(y1 - y2)
