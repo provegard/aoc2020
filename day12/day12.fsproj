@@ -14,7 +14,9 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Compile Include="Common.fs" />
         <Compile Include="UnitTest1.fs" />
+        <Compile Include="UnitTest2.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 

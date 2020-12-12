@@ -1,9 +1,8 @@
-module day12
+module day12_1
 
 open NUnit.Framework
 open fsutils.FsUtils
-
-let readInput () = readLines "../../../input" |> List.ofSeq
+open day12.Common
 
 //type Direction = East | North | West | South
 let East = 0
@@ -12,8 +11,6 @@ let West = 180
 let South = 270
 
 type Ferry = { x: int ; y : int ; direction : int }
-
-type Move = { action: char ; value: int }
 
 let newFerry () : Ferry = { x = 0; y = 0; direction = East }
 
@@ -43,11 +40,6 @@ let move (f: Ferry) (m: Move) : Ferry =
     | 'R' -> changeDirection (-m.value) f
     | 'L' -> changeDirection m.value f
     | _ -> failwith (sprintf "Unknown action %c" m.action)
-
-let toMove (l: string) : Move =
-    let action = l.Chars 0
-    let value = int (l.Substring 1)
-    { action = action; value = value }
 
 let applyMoves (moves: list<Move>) (f: Ferry) : Ferry =
     List.fold move f moves
