@@ -6,18 +6,6 @@ open fsutils.FsUtils
 
 let readInput () = readLines "../../../input" |> List.ofSeq
 
-let testInput = @"mask = XXXXXXXXXXXXXXXXXXXXXXXXXXXXX1XXXX0X
-mem[8] = 11
-mem[7] = 101
-mem[8] = 0"
-let testLines = testInput.Split('\n') |> List.ofArray
-
-let testInput2 = @"mask = 000000000000000000000000000000X1001X
-mem[42] = 100
-mask = 00000000000000000000000000000000X0XX
-mem[26] = 1"
-let testLines2 = testInput2.Split('\n') |> List.ofArray
-
 type BitMask = list<char>
 type Memory = { data: Map<uint64, uint64>; mask: BitMask }
 
@@ -28,10 +16,7 @@ let applyMask (mask: BitMask) (value: uint64) : uint64 =
     |> List.where (fun (_, ch) -> ch <> 'X')
     |> List.fold (fun v (idx, ch) ->
             let bv = uint64 1 <<< idx
-            if ch = '1' then
-                v ||| bv
-            else
-                v &&& ~~~bv
+            if ch = '1' then v ||| bv else v &&& ~~~bv
         ) value
     
 type Oper =
@@ -52,16 +37,12 @@ let applyOperation (m: Memory) (o: Oper) : Memory =
         let v' = applyMask m.mask v
         let data' = Map.add adr v' m.data
         { m with data = data' }
-        
+
 let toMask (v: uint64) : BitMask =
-    let bits =[ for i in 0 .. 35 -> i ] |> List.map (fun i ->
-            let value = uint64 1 <<< i
-            if v &&& value <> 0UL then
-                '1'
-            else
-                '0'
-        )
-    bits |> List.rev
+    let bch (i: int) =
+        let value = uint64 1 <<< i
+        if v &&& value <> 0UL then '1' else '0'
+    [ for i in 0 .. 35 -> i ] |> List.map bch |> List.rev
 
 let rec gen (chars: list<int*char>) : seq<uint64> = seq {
     match chars with
@@ -100,19 +81,19 @@ let applyOperation2 (m: Memory) (o: Oper) : Memory =
         let data' = List.fold (fun d a' -> Map.add a' v d) m.data aa
         { m with data = data' }
 
-let newMemory () : Memory =
-    { data = Map.empty; mask = List.empty }
+let newMemory () : Memory = { data = Map.empty; mask = List.empty }
 
-let run (operations: list<Oper>) : Memory =
-    let memory = newMemory()
-    List.fold applyOperation memory operations
-    
-let run2 (operations: list<Oper>) : Memory =
-    let memory = newMemory()
-    List.fold applyOperation2 memory operations
+let run (applyOp: Memory -> Oper -> Memory) (operations: list<Oper>) : Memory =
+    List.fold applyOp (newMemory()) operations
     
 let sumNonZero (m: Memory) : uint64 =
-    Map.toList m.data |> List.where (fun (_, v) -> v <> 0UL) |> List.sumBy (fun (_, v) -> v)
+    Map.toList m.data |> List.sumBy (fun (_, v) -> v)
+    
+let part (lines: list<string>) (applyOp: Memory -> Oper -> Memory) : uint64 =
+    lines |> List.map parseLine |> run applyOp |> sumNonZero
+    
+let part1 (lines: list<string>): uint64 = part lines applyOperation
+let part2 (lines: list<string>): uint64 = part lines applyOperation2
     
 [<Test>]
 let testApply () =
@@ -144,21 +125,10 @@ let testGen () =
 
 [<Test>]
 let Test1 () =
-    let operations = readInput() |> List.map parseLine
-    let mem = run operations
-    let result = sumNonZero mem
+    let result = part1 (readInput())
     Assert.That(result, Is.EqualTo(18630548206046UL))
     
 [<Test>]
-let Test2 () =
-    let operations = testLines2 |> List.map parseLine
-    let mem = run2 operations
-    let result = sumNonZero mem
-    Assert.That(result, Is.EqualTo(208UL))
-    
-[<Test>]
 let Part2 () =
-    let operations = readInput() |> List.map parseLine
-    let mem = run2 operations
-    let result = sumNonZero mem
+    let result = part2 (readInput())
     Assert.That(result, Is.EqualTo(4254673508445UL))
