@@ -46,3 +46,9 @@ let Test1 () =
     let numbers = [ 0;5;4;1;10;14;7 ]
     let s = gen numbers |> Seq.skip 2019 |> Seq.head
     Assert.That(s, Is.EqualTo(203))
+    
+[<Test>]
+let Test2 () =
+    let numbers = [ 0;5;4;1;10;14;7 ]
+    let s = gen numbers |> Seq.skip (30_000_000-1) |> Seq.head
+    Assert.That(s, Is.EqualTo(9007186)) // ~2 minutes...
