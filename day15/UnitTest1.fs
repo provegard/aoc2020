@@ -10,7 +10,7 @@ let gen (input: list<int>) : seq<int> = seq {
     let addToSeen (n: int) (r: int) : Unit =
         seen <-
             match Map.tryFind n seen with
-            | Some list -> Map.add n (r :: list) seen
+            | Some list -> Map.add n (r :: List.take 1 list) seen // we only need to keep at most 2 items
             | None -> Map.add n [r] seen
     
     for (i, n) in (input |> List.indexed) do
