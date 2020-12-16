@@ -65,8 +65,58 @@ let part1 (lines: list<string>) : int =
     let context = parseInput lines
     let allInvalidValues = context.nearbyTickets |> List.collect (fun t -> invalidTicketValues t context.validators)
     List.sum allInvalidValues
+    
+let isTicketValid (validators: list<Validator>) (t: Ticket) : bool =
+    0 = List.length (invalidTicketValues t validators)
+    
+let fieldCandidates (tickets: list<Ticket>) (validators: list<Validator>) (fieldNumber: int) : int*list<string> =
+    let allFieldValues = tickets |> List.map (fun t -> t.values.Item fieldNumber)
+    let validatesAllFieldValues (v: Validator) : bool =
+        List.forall (fun value -> isValid value v) allFieldValues
+        
+    let fieldNames =
+        validators
+        |> List.where validatesAllFieldValues
+        |> List.map (fun v -> v.field)
+
+    (fieldNumber, fieldNames)
+    
+let narrowFieldCandidates (candidates: list<int*list<string>>) : list<int*string> =
+    
+    let rec narrow (rest: list<int*list<string>>) : list<int*string> =
+        if List.isEmpty rest then
+            []
+        else
+            let (ready, needWork) = rest |> List.partition (fun (_, cs) -> 1 = List.length cs)
+            let readyList = ready |> List.map (fun (fn, cs) -> (fn, List.head cs))
+            let readyFieldSet = readyList |> List.map snd |> Set.ofList
+            let stripped = needWork |> List.map (fun (fn, cs) ->
+                    let cs' = cs |> List.where (fun c -> not (Set.contains c readyFieldSet))
+                    (fn, cs')
+                )
+            readyList @ (narrow stripped)
+    
+    narrow candidates
+    
+let part2 (lines: list<string>) : uint64 =
+    let context = parseInput lines
+    
+    let validTickets = context.myTicket :: (context.nearbyTickets |> List.where (isTicketValid context.validators))
+    let fieldNumbers = [ for i in 0 .. (List.length context.myTicket.values) - 1 -> i ]
+    let candidatesPerField = fieldNumbers |> List.map (fun i -> fieldCandidates validTickets context.validators i)
+    let narrowed = narrowFieldCandidates candidatesPerField
+
+    let departureFieldNumbers = narrowed |> List.where (fun (_, f) -> f.StartsWith("departure")) |> List.map fst
+    let myDepartureFieldValues = departureFieldNumbers |> List.map (fun i -> context.myTicket.values.Item i) |> List.map uint64
+    
+    List.fold (*) 1UL myDepartureFieldValues
 
 [<Test>]
 let Test1 () =
     let result = part1 (readInput ())
     Assert.That(result, Is.EqualTo(28873))
+    
+[<Test>]
+let Test2 () =
+    let result = part2 (readInput ())
+    Assert.That(result, Is.EqualTo(2587271823407UL))
