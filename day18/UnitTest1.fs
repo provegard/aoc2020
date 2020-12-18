@@ -18,8 +18,8 @@ let readParenthesisedExpression (tokens: list<string>) : list<string>*list<strin
             (List.rev (List.tail collected), tk)
         else
             match tk with
-            | t :: rest when t = "(" -> read (t :: collected) rest (balance + 1)
-            | t :: rest when t = ")" -> read (t :: collected) rest (balance - 1)
+            | "(" :: rest -> read ("(" :: collected) rest (balance + 1)
+            | ")" :: rest -> read (")" :: collected) rest (balance - 1)
             | t :: rest -> read (t :: collected) rest balance
             | [] -> failwith "failed to find parenthesized expression end"
     read [] tokens 1
