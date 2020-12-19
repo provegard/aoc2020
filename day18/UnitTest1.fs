@@ -1,6 +1,8 @@
 module day18
 
 open System
+open System.Collections
+open System.Collections.Generic
 open System.Text.RegularExpressions
 open NUnit.Framework
 open fsutils.FsUtils
@@ -9,75 +11,91 @@ let readInput () = readLines "../../../input" |> List.ofSeq
 
 let lex (expr: string) : list<string> =
     Regex.Matches(expr, "[0-9]+|\\(|\\)|\\+|\\*| +") |> Seq.map (fun m -> m.Value) |> Seq.where (fun s -> not (String.IsNullOrWhiteSpace(s))) |> List.ofSeq
+
+type Item =
+    | Operand of n: uint64
+    | Operator of s: string
     
-let readParenthesisedExpression (tokens: list<string>) : list<string>*list<string> =
+let firstHasGreaterPrecedenceOrEqualLeftAssociative (first: string) (second: string) : bool =
+    true
     
-    let rec read (collected: list<string>) (tk: list<string>) (balance: int) : list<string>*list<string> =
-        if balance = 0 then
-            // We collect in reverse, and we need to strip the last closing paren
-            (List.rev (List.tail collected), tk)
+let shouldPopOperator (operatorStack: Stack<string>) (currentOperator: string) : bool =
+    match operatorStack.TryPeek() with
+    | true, "(" -> false
+    | true, o -> firstHasGreaterPrecedenceOrEqualLeftAssociative o currentOperator
+    | false, _ -> false
+    
+let operatorStackTopIs (needle: string) (operatorStack: Stack<string>) =
+    match operatorStack.TryPeek() with
+    | true, o when o = needle -> true
+    | _ -> false
+
+let shuntingYard (tokens: list<string>) : list<Item> =
+    let mutable reverseOutputQueue: list<Item> = List.empty
+    let operatorStack = Stack<string>()
+
+    let mutable rest = tokens
+    while not (List.isEmpty rest) do
+        let token = List.head rest
+        rest <- List.tail rest
+
+        if token = "(" then
+            operatorStack.Push(token)
+        elif token = ")" then
+            while operatorStack.Count > 0 && not (operatorStackTopIs "(" operatorStack) do
+                reverseOutputQueue <- Operator(operatorStack.Pop()) :: reverseOutputQueue
+                // TODO If the stack runs out without finding a left parenthesis, then there are mismatched parentheses.
+            if operatorStackTopIs "(" operatorStack then
+                operatorStack.Pop() |> ignore // discard it
         else
-            match tk with
-            | "(" :: rest -> read ("(" :: collected) rest (balance + 1)
-            | ")" :: rest -> read (")" :: collected) rest (balance - 1)
-            | t :: rest -> read (t :: collected) rest balance
-            | [] -> failwith "failed to find parenthesized expression end"
-    read [] tokens 1
-    
-let calcExpr (o1: uint64) (op: string) (o2: uint64) : uint64 =
-    match op with
-    | "*" -> o1 * o2
-    | "+" -> o1 + o2
-    | _ -> failwith (sprintf "Unknown operator: %s" op)
-    
-let rec parseExpr (tokens: list<string>) : uint64*list<string> =
-    
-    let readOperand (tokens: list<string>) : uint64*list<string> =
-        match tokens with
-        | "(" :: rest ->
-            let (innerExpr, rest') = readParenthesisedExpression rest
-            let (res, rr) = parseExpr innerExpr
-            (res, rr @ rest')
-        | n :: rest ->
-            match UInt64.TryParse n with
-            | true, num -> (num, rest)
-            | false, _ -> failwith (sprintf "not a number: '%s'" n)
-        | [] -> failwith "no more tokens"
-        
-    let readOperator (tokens: list<string>) : string*list<string> =
-        match tokens with
-        | op :: rest -> (op, rest)
-        | _ -> failwith "failed to read operator"
-        
-    let rec calcOne (operand1: uint64) (r1: list<string>) : uint64 =
-        let (operator, r2) = readOperator r1
-        let (operand2, r3) = readOperand r2
-        
-        let newOperand1 = calcExpr operand1 operator operand2
-    
-        match r3 with
-        | [] -> newOperand1
-        | more -> calcOne newOperand1 more
+            match UInt64.TryParse token with
+            | true, n -> reverseOutputQueue <- Operand(n) :: reverseOutputQueue
+            | false, _ ->
+                while operatorStack.Count > 0 && (shouldPopOperator operatorStack token) do
+                    reverseOutputQueue <- Operator(operatorStack.Pop()) :: reverseOutputQueue
+                operatorStack.Push(token)
+    while operatorStack.Count > 0 do
+        reverseOutputQueue <- Operator(operatorStack.Pop()) :: reverseOutputQueue
 
-    let (operand1, r1) = readOperand tokens
-    (calcOne operand1 r1, [])
-        
-
+    List.rev reverseOutputQueue
+    
+let applyOperator (o: string) (n1: uint64) (n2: uint64) : uint64 =
+    match o with
+    | "+" -> n1 + n2
+    | "*" -> n1 * n2
+    | _ -> failwith (sprintf "Unknown operator '%s'" o)
+    
+let evaluateRpn (outputQueue: list<Item>) : uint64 =
+    let operandStack = Stack<uint64>()
+    for item in outputQueue do
+        match item with
+        | Operand n -> operandStack.Push(n)
+        | Operator o ->
+            let n1 = operandStack.Pop()
+            let n2 = operandStack.Pop()
+            operandStack.Push(applyOperator o n1 n2)
+    operandStack.Pop()
+            
+    
 let calc (expr: string) : uint64 =
     let tokens = lex expr
-    fst (parseExpr tokens)
+    let oq = shuntingYard tokens
+    printf "%A\n" oq
+    evaluateRpn oq
 
-//[<Test>]
-//let Test1 () =
-//    Assert.That(calc "1 + 2", Is.EqualTo(3))
-//    Assert.That(calc "2 * 3", Is.EqualTo(6))
-//    Assert.That(calc "1 + 2 * 3", Is.EqualTo(9))
-//    Assert.That(calc "1 + (2 * 3)", Is.EqualTo(7))
-//    Assert.That(calc "1 + (2 * 3) + 2", Is.EqualTo(9))
-//    Assert.That(calc "6 + ((7 * 9 * 9 + 2) * 2)", Is.EqualTo(1144))
-    
 [<Test>]
 let Test1 () =
+    Assert.Multiple(fun () ->
+        Assert.That(calc "1 + 2", Is.EqualTo(3))
+        Assert.That(calc "2 * 3", Is.EqualTo(6))
+        Assert.That(calc "1 + 2 * 3", Is.EqualTo(9))
+        Assert.That(calc "1 + (2 * 3)", Is.EqualTo(7))
+        Assert.That(calc "1 + (2 * 3) + 2", Is.EqualTo(9))
+        Assert.That(calc "6 + ((7 * 9 * 9 + 2) * 2)", Is.EqualTo(1144))
+        )
+    
+[<Test>]
+let part1 () =
     let lines = readInput()
     let sum = lines |> List.map calc |> List.sum
     Assert.That(sum, Is.EqualTo(14208061823964UL))
