@@ -6,125 +6,12 @@ open fsutils.FsUtils
 
 let readInput () = readLines "../../../input" |> List.ofSeq
 
-let testInput = @"Tile 2311:
-..##.#..#.
-##..#.....
-#...##..#.
-####.#...#
-##.##.###.
-##...#.###
-.#.#.#..##
-..#....#..
-###...#.#.
-..###..###
-
-Tile 1951:
-#.##...##.
-#.####...#
-.....#..##
-#...######
-.##.#....#
-.###.#####
-###.##.##.
-.###....#.
-..#.#..#.#
-#...##.#..
-
-Tile 1171:
-####...##.
-#..##.#..#
-##.#..#.#.
-.###.####.
-..###.####
-.##....##.
-.#...####.
-#.##.####.
-####..#...
-.....##...
-
-Tile 1427:
-###.##.#..
-.#..#.##..
-.#.##.#..#
-#.#.#.##.#
-....#...##
-...##..##.
-...#.#####
-.#.####.#.
-..#..###.#
-..##.#..#.
-
-Tile 1489:
-##.#.#....
-..##...#..
-.##..##...
-..#...#...
-#####...#.
-#..#.#.#.#
-...#.#.#..
-##.#...##.
-..##.##.##
-###.##.#..
-
-Tile 2473:
-#....####.
-#..#.##...
-#.##..#...
-######.#.#
-.#...#.#.#
-.#########
-.###.#..#.
-########.#
-##...##.#.
-..###.#.#.
-
-Tile 2971:
-..#.#....#
-#...###...
-#.#.###...
-##.##..#..
-.#####..##
-.#..####.#
-#..#.#..#.
-..####.###
-..#.#.###.
-...#.#.#.#
-
-Tile 2729:
-...#.#.#.#
-####.#....
-..#.#.....
-....#..#.#
-.##..##.#.
-.#.####...
-####.#.#..
-##.####...
-##..#.##..
-#.##...##.
-
-Tile 3079:
-#.#.#####.
-.#..######
-..#.......
-######....
-####.#..#.
-.#...#.##.
-#.#####.##
-..#.###...
-..#.......
-..#.###..."
-
-let testLines = testInput.Split('\n') |> List.ofArray
-
-
 let seaMonster = @"                  # 
 #    ##    ##    ###
  #  #  #  #  #  #   "
 let seaMonsterLines = seaMonster.Split('\n') |> List.ofArray
 
 let relativeSeaMonsterPositionsSeq: seq<int*int> = seq {
-    let monsterHeight = List.length seaMonsterLines
-    let monsterWidth = (List.head seaMonsterLines).Length
     for (y, line) in (List.indexed seaMonsterLines) do
         for (x, ch) in (line.ToCharArray() |> Array.indexed) do
             if ch = '#' then
@@ -282,14 +169,6 @@ let patternAt (t: Tile) (x: int) (y: int) (w: int) (h: int) : string =
     |> List.map (fun s -> s.Replace(".", " "))
     |> String.concat "\n"
 
-//let seaMonsterChars = seaMonsterLines |> List.collect (fun s -> s.ToCharArray() |> List.ofArray)    
-//let patternContainsSeaMonster (pat: string) : bool =
-//    let patChars = pat.Split('\n') |> List.ofArray |> List.collect (fun s -> s.ToCharArray() |> List.ofArray)
-//    List.zip seaMonsterChars patChars
-//    |> List.forall (fun (mc, pc) ->
-//        mc = ' ' || pc = '#'
-//        )
-    
 let tileCharAt (x: int) (y: int) (t: Tile) : char =
     (t.lines.Item y).Chars x
     
@@ -302,9 +181,6 @@ let seaMonsterLocations (t: Tile) : seq<int*int> = seq {
             '#' = tileCharAt (x + sx) (y + sy) t
             ) relativeSeaMonsterPositions
         
-//        let pat = patternAt t x y monsterWidth monsterHeight
-//        patternContainsSeaMonster pat
-    
     let tileWidth = (List.head t.lines).Length
     for y in 0 .. (List.length t.lines) - monsterHeight do
         for x in 0 .. tileWidth - monsterWidth do
@@ -333,7 +209,7 @@ let roughness (t: Tile) (locs: list<int*int>) : int =
     |> List.map (fun l -> l.ToCharArray() |> Array.where (fun ch -> ch = '#') |> Array.length)
     |> List.sum
 
-let arrangeTiles (tiles: list<Tile>) : Unit =
+let arrangeTiles (tiles: list<Tile>) : seq<int> =
     let gridSize = int (Math.Sqrt (float (List.length tiles)))
     
     let lookup = createTileLookup tiles
@@ -349,7 +225,6 @@ let arrangeTiles (tiles: list<Tile>) : Unit =
         |> List.collect (fun t -> tileVariants t |> List.ofSeq)
         
     let placeTile (t: Tile) ((x, y): int*int) (grid: Map<int*int, Tile>) : Map<int*int, Tile> =
-//        printf "Placing tile %d at x = %d, y = %d\n" t.id x y
         Map.add (x, y) t grid
         
     let buildGrid (t0: Tile) : Grid =
@@ -386,49 +261,33 @@ let arrangeTiles (tiles: list<Tile>) : Unit =
                         failwith (sprintf "found multiple tiles (%A) to place below of %d" ids' above.id)
         { tileMap = m; gridSize = gridSize }
 
-    for cornerIdx in [ List.head ids ] do
-//    for cornerIdx in ids do
-        printf "\n\n"
-//        printf "\n\ncorner id = %d\n" cornerIdx
-        let cornerTile = List.find (fun t -> t.id = cornerIdx) tiles
-        
-        let os = outsideSides cornerTile lookup
-        let possibleTopLeftCornerVariants =
-            tileVariants cornerTile
-            |> Seq.where (fun v ->
-                let vTop = tileTop v
-                let vLeft = tileLeft v
-                (List.contains vTop os) && (List.contains vLeft os)
-                )
-            |> List.ofSeq
-        
-        for v in [ List.head possibleTopLeftCornerVariants ] do
-//        for v in possibleTopLeftCornerVariants do
-            try
+    seq {
+        for cornerIdx in [ List.head ids ] do
+            let cornerTile = List.find (fun t -> t.id = cornerIdx) tiles
+            
+            let os = outsideSides cornerTile lookup
+            let possibleTopLeftCornerVariants =
+                tileVariants cornerTile
+                |> Seq.where (fun v ->
+                    let vTop = tileTop v
+                    let vLeft = tileLeft v
+                    (List.contains vTop os) && (List.contains vLeft os)
+                    )
+                |> List.ofSeq
+            
+            for v in [ List.head possibleTopLeftCornerVariants ] do
                 let grid = buildGrid v
-//                printGrid grid
-                
-//                printf "\n\n"
                 
                 let grid' = removeBorders grid
                 let newTile = toTile grid'
-//                printTile newTile
                 
                 for tv in (tileVariants newTile) do
                     let locs = seaMonsterLocations tv |> List.ofSeq
                     let cnt = List.length locs
                     if cnt > 0 then
-                        printf "Found %d sea monsters\n" cnt
                         let rough = roughness tv locs
-                        printf "roughness = %d\n" rough
-                
-//                printf "Variant succeeded\n"
-            with
-            | ex ->
-                printf "Variant failed: %s\n" ex.Message
-    
-    ()
-    
+                        yield rough
+    }
 
 [<Test>]
 let Test1 () =
@@ -439,9 +298,8 @@ let Test1 () =
     let mul = List.fold (*) 1UL ids
     Assert.That(mul, Is.EqualTo(20913499394191UL))
     
-    
 [<Test>]
 let Test2 () =
     let tiles = readTiles (readInput())
-    arrangeTiles tiles
-    Assert.Fail() // 2209
+    let result = arrangeTiles tiles |> Seq.head
+    Assert.That(result, Is.EqualTo(2209))
