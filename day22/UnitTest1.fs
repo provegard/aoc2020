@@ -18,9 +18,7 @@ let draw (d: Deck) : (int*Deck) =
     | [] -> failwith "invalid draw in empty Deck"
     
 let putCards (d: Deck) (c1: int) (c2: int) : Deck =
-    let first = Math.Max(c1, c2)
-    let second = Math.Min(c1, c2)
-    { cards = d.cards @ [ first; second ] }
+    { cards = d.cards @ [ c1; c2 ] }
     
 let round (p1: Deck) (p2: Deck) : (Deck*Deck) =
     let (c1, p1') = draw p1
@@ -31,7 +29,7 @@ let round (p1: Deck) (p2: Deck) : (Deck*Deck) =
         (p1'', p2')
     else
         // p2 wins
-        let p2'' = putCards p2' c1 c2
+        let p2'' = putCards p2' c2 c1
         (p1', p2'')
         
 let calcScore (d: Deck) : uint64 =
